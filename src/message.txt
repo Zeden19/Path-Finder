@@ -1,0 +1,203 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Stack;
+
+public class MyMap {
+	
+    private Graph graph; 
+    private Node startingNode; 
+    private Node endNode; 
+    private int maxPrivateRoads; 
+    private int maxConstructionRoads; 
+    private int privateUsed;
+    private int constructionUsed;
+    Stack<Node> pathway = new Stack<>(); 
+    Stack<Edge> edgePath = new Stack<>();
+
+
+    public MyMap(String inputFile) throws IOException, MapException, GraphException {
+
+    	File file = new File(inputFile);
+
+        BufferedReader input = new BufferedReader(new FileReader(file));
+
+        String line; 
+        int count = 0; 
+        int width = 0; 
+        int length = 0; 
+        int end = 0; 
+        int start = 0; 
+        int horizontalNode = 0; 
+        int verticalNode = 0; 
+
+        while ((line = input.readLine()) != null) {
+        	
+            String[] characters = line.split("");
+
+            if (count == 1) {
+                start = Integer.parseInt(line);
+            } else if (count == 2) {
+                end = Integer.parseInt(line);
+            } else if (count == 3) {
+                width = Integer.parseInt(line);
+            } else if (count == 4) {
+                length = Integer.parseInt(line);
+                graph = new Graph(width * length);
+                endNode = graph.getNode(end);
+                startingNode = graph.getNode(start);
+            } else if (count == 5) {
+                maxPrivateRoads = Integer.parseInt(line);
+            } else if (count == 6) {
+                maxConstructionRoads = Integer.parseInt(line);
+            }
+            else if (count > 6) {
+
+                if (isEven(count - 7)) {
+
+                    for (int i = 0; i < characters.length; i++) {
+
+                        if (isEven(i)) {
+
+                            try { String test = characters[i + 1];
+                            } catch (IndexOutOfBoundsException e) {
+                                horizontalNode++;
+                                break;
+                            }
+
+                            if (characters[i + 1].compareTo("P") == 0) {
+                            	graph.addEdge(graph.getNode(horizontalNode),
+                            	graph.getNode(horizontalNode + 1), "public");
+
+                            } else if (characters[i + 1].compareTo("V") == 0) {
+                            	graph.addEdge(graph.getNode(horizontalNode),
+                            	graph.getNode(horizontalNode + 1), "private");
+
+                            } else if (characters[i + 1].compareTo("C") == 0) {
+                            	graph.addEdge(graph.getNode(horizontalNode),
+                            	graph.getNode(horizontalNode + 1), "construction");
+                            }
+
+                            horizontalNode++;
+                            
+                        }
+                        
+                    }
+
+                } else {
+
+                    int nodeCounter = 0; 
+                    for (int i = 0; i < characters.length; i++) {
+
+                        if (isEven(i) && count - 7 != 0) {
+
+                            if (characters[i].compareTo("P") == 0) {
+                            	graph.addEdge(graph.getNode(verticalNode),
+                            	graph.getNode(horizontalNode + nodeCounter), "public");
+
+                            } else if (characters[i].compareTo("V") == 0) {
+                            	graph.addEdge(graph.getNode(verticalNode),
+                            	graph.getNode(horizontalNode + nodeCounter), "private");
+
+                            } else if (characters[i].compareTo("C") == 0) {
+                            	graph.addEdge(graph.getNode(verticalNode),
+                            	graph.getNode(horizontalNode + nodeCounter), "construction");
+                            }
+
+                            nodeCounter++;
+                            verticalNode++;
+                        }
+                        
+                    }
+                    
+                }
+                
+            }
+            
+            count++;
+            
+        }
+        
+    }
+
+    Graph getGraph() {return graph;}
+    int getStartingNode() {return startingNode.getId();}
+    int getDestinationNode() {return endNode.getId();}
+    int maxPrivateRoads() {return maxPrivateRoads;}
+    int maxConstructionRoads() {return maxConstructionRoads;}
+
+    Iterator findPath(int start, int destination, int maxPrivate, int maxConstruction) throws GraphException {
+        
+    	Node startingNode = graph.getNode(start); 
+        startingNode.markNode(true);
+        pathway.push(startingNode);
+        if (start == destination) return pathway.iterator();
+        Edge edge;
+        Iterator incidentEdges = graph.incidentEdges(startingNode);
+
+        while (incidentEdges.hasNext()) {
+
+            edge = (Edge) incidentEdges.next();
+
+            if (!edge.secondNode().getMark()) {
+
+                if (edge.getType().compareTo("construction") == 0) {
+         
+                    if (constructionUsed != maxConstruction) {constructionUsed++;}
+                    else {continue;}
+
+                }
+
+                if (edge.getType().compareTo("private") == 0) {
+
+                	if (privateUsed != maxPrivate) {privateUsed++;}
+                    else {continue;}
+
+                }
+
+                edgePath.push(edge);
+                if (findPath(edge.secondNode().getId(), destination, maxPrivate, maxConstruction) != null) {return pathway.iterator();}
+            
+            }
+
+            else if (!edge.firstNode().getMark()) {
+               
+                if (edge.getType().compareTo("construction") == 0) {
+
+                	if (constructionUsed != maxConstruction) {constructionUsed++;}
+                    else {continue;}
+
+                }
+
+                if (edge.getType().compareTo("private") == 0) {
+
+                	if (privateUsed != maxPrivate) {privateUsed++;}
+                    else {continue;}
+
+                }
+
+                edgePath.push(edge);
+                if (findPath(edge.firstNode().getId(), destination, maxPrivate, maxConstruction) != null) {return pathway.iterator();}
+            }
+            
+        }
+
+        if (!edgePath.isEmpty()) {
+        	
+            if (edgePath.peek().getType().compareTo("construction") == 0) {constructionUsed--;}
+            if (edgePath.peek().getType().compareTo("private") == 0) {privateUsed--;}
+            edgePath.pop();
+            
+        }
+
+        pathway.peek().markNode(false);
+        pathway.pop();
+        return null;
+        
+    }
+
+    private boolean isEven(int num) {return num % 2 == 0;}
+
+}
